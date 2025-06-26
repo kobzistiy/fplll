@@ -1,0 +1,46 @@
+name: Build fplll Binary
+
+# Этот воркфлоу будет запускаться вручную со страницы Actions
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    # Запускаем на последней версии Ubuntu, как в WSL
+    runs-on: ubuntu-latest
+
+    steps:
+      # Шаг 1: Установка зависимостей, необходимых для сборки fplll
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgmp-dev libmpfr-dev wget
+
+      # Шаг 2: Скачивание и распаковка исходного кода fplll
+      - name: Download and Extract fplll
+        run: |
+          wget https://github.com/fplll/fplll/releases/download/5.5.0/fplll-5.5.0.tar.gz
+          tar -xzvf fplll-5.5.0.tar.gz
+
+      # Шаг 3: Конфигурация и компиляция
+      # Мы НЕ делаем 'make install', нам нужен только исполняемый файл
+      - name: Configure and Build
+        run: |
+          cd fplll-5.5.0
+          ./configure
+          make -j$(nproc)
+
+      # Шаг 4: Подготовка артефакта для выгрузки
+      # Создаем папку 'dist' и копируем туда готовый файл 'fplll'
+      - name: Prepare Artifact
+        run: |
+          mkdir -p ./dist
+          cp ./fplll-5.5.0/fplll ./dist/
+
+      # Шаг 5: Выгрузка скомпилированного файла как артефакта
+      # Теперь его можно будет скачать со страницы воркфлоу
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fplll-binary
+          path: ./dist/fplll
