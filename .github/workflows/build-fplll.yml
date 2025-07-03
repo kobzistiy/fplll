@@ -1,43 +1,46 @@
-name: Build fplll Binary
+# Имя рабочего процесса
+name: Build fplll Static Binary
 
+# Триггер для ручного запуска
 on:
   workflow_dispatch:
 
 jobs:
   build:
+    # Запуск на последней версии Ubuntu
     runs-on: ubuntu-latest
 
     steps:
-      # Шаг 1: Установка зависимостей (без изменений)
+      # Шаг 1: Установка зависимостей
+      # Устанавливаем компилятор, make и статические версии библиотек GMP и MPFR
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgmp-dev libmpfr-dev wget
+          sudo apt-get install -y build-essential libgmp-dev libmpfr-dev wget
 
-      # Шаг 2: Скачивание и распаковка (без изменений)
+      # Шаг 2: Скачивание и распаковка fplll
       - name: Download and Extract fplll
         run: |
           wget https://github.com/fplll/fplll/releases/download/5.5.0/fplll-5.5.0.tar.gz
           tar -xzvf fplll-5.5.0.tar.gz
 
-      # Шаг 3: Конфигурация, компиляция и УСТАНОВКА в локальную папку
-      # ИЗМЕНЕНИЯ ЗДЕСЬ:
-      - name: Configure, Build and Install
+      # Шаг 3: Конфигурация и статическая сборка
+      # ИЗМЕНЕНИЯ ЗДЕСЬ: Добавляем флаги для статической линковки
+      - name: Configure and Build Statically
         run: |
           cd fplll-5.5.0
-          # Говорим, что устанавливать нужно в папку 'dist' в корне проекта
-          ./configure --prefix=${{ github.workspace }}/dist
-          # Собираем проект
+          # Конфигурируем для статической сборки, отключая динамическую
+          # LDFLAGS="-static" указывает линкеру на необходимость статической линковки
+          ./configure LDFLAGS="-static" --enable-static --disable-shared
+          # Собираем проект, используя все доступные ядра процессора
           make -j$(nproc)
-          # Устанавливаем в указанную папку
-          make install
 
-      # Шаг 4: Выгрузка готового бинарного файла
-      # ИЗМЕНЕНИЯ ЗДЕСЬ:
+      # Шаг 4: Выгрузка готового статического бинарного файла
+      # ИЗМЕНЕНИЯ ЗДЕСЬ: Указываем путь к бинарнику в папке сборки
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: fplll-binary # Имя артефакта остается прежним
-          # Путь теперь ведет к исполняемому файлу внутри папки,
-          # куда мы все установили.
-          path: ${{ github.workspace }}/dist/bin/fplll
+          # Имя артефакта для скачивания
+          name: fplll-static-binary
+          # Путь к скомпилированному исполняемому файлу
+          path: fplll-5.5.0/fplll
